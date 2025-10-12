@@ -107,6 +107,17 @@ def parse_text(raw_text: str):
     cur = None
     buf = []
     expecting_subtitle = False
+    used_anchors: set[str] = set()
+
+    def unique_anchor(base: str) -> str:
+        anchor = base or "sec"
+        if anchor in used_anchors:
+            i = 2
+            while f"{anchor}-{i}" in used_anchors:
+                i += 1
+            anchor = f"{anchor}-{i}"
+        used_anchors.add(anchor)
+        return anchor
 
     def flush_buf():
         nonlocal buf, cur
@@ -128,7 +139,7 @@ def parse_text(raw_text: str):
                 flush_buf()
                 sections.append(cur)
             cur = Section("preface", "ELŐSZÓ")
-            cur.anchor = "sec-eloszo"
+            cur.anchor = unique_anchor("sec-eloszo")
             expecting_subtitle = False
             buf = []
             continue
@@ -141,7 +152,8 @@ def parse_text(raw_text: str):
                 cur = None
             title = m.group(1).strip()
             cur = Section("story", title)
-            cur.anchor = "sec-" + slugify(title)
+            slug = slugify(title) or "resz"
+            cur.anchor = unique_anchor("sec-" + slug)
             expecting_subtitle = True
             buf = []
             continue
@@ -207,10 +219,23 @@ def build_html(sections):
 /* Alap */
 html, body { background:#e7e7e7; margin:0; padding:0; color:#1a1a1a;
              font-family:'EB Garamond',serif; font-size:13.5pt; line-height:1.65; }
+.sheet { background:#fff; }
+body.pagedjs-ready .sheet { display:none; }
+body:not(.pagedjs-ready) .pagedjs_pages { display:none !important; }
 
 /* Képernyős lapnézet */
 @media screen {
   .sheet { width:230mm; margin:10mm auto; background:#fff; box-shadow:0 5px 20px rgba(0,0,0,.15); border:1px solid #ddd; }
+  body.pagedjs-ready .pagedjs_pages {
+    display:flex !important; flex-direction:column; align-items:center; gap:10mm;
+    background:#e7e7e7; padding:10mm 0;
+  }
+  body.pagedjs-ready .pagedjs_page { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,.15); }
+}
+
+@media print {
+  body.pagedjs-ready .pagedjs_pages { display:block !important; background:none; padding:0; }
+  body.pagedjs-ready .pagedjs_page { box-shadow:none; margin:0 auto; }
 }
 
 /* Borítók */
@@ -275,8 +300,6 @@ figure.author-image figcaption { position:absolute; bottom:12mm; right:20mm; fon
   }
   .pagedjs_page { background:#fff; box-shadow:0 5px 20px rgba(0,0,0,.15); }
 }
-body.show-original .sheet { display:block; }
-body.hide-original .sheet { display:none; }
 """
 
     head = f"""<!DOCTYPE html>
@@ -285,22 +308,35 @@ body.hide-original .sheet { display:none; }
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{escape(BOOK_TITLE)} — {escape(BOOK_SUBTITLE)}</title>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/pagedjs/dist/paged.polyfill.css">
 <style>{css}</style>
 <!-- Paged.js -->
 <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
 <!-- Fallback logika: ha a Paged nem rakja ki a lapokat, marad az eredeti nézet -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {{
-  document.body.classList.add("show-original");
-  function swapIfReady(){{
-    var pages = document.querySelector(".pagedjs_pages");
-    if (pages) {{
-      document.body.classList.remove("show-original");
-      document.body.classList.add("hide-original");
+  var body = document.body;
+  function activatePagedView() {{
+    if (body.classList.contains("pagedjs-ready")) {{
+      return;
     }}
+    var pages = document.querySelector(".pagedjs_pages");
+    if (!pages) {{
+      return;
+    }}
+    var firstPage = pages.querySelector(".pagedjs_page");
+    if (!firstPage) {{
+      return;
+    }}
+    body.classList.add("pagedjs-ready");
   }}
-  document.addEventListener("pagedjs:rendered", swapIfReady);
-  setTimeout(swapIfReady, 4000);
+  document.addEventListener("pagedjs:rendered", activatePagedView);
+  setTimeout(activatePagedView, 3000);
+  setTimeout(function () {{
+    if (!body.classList.contains("pagedjs-ready")) {{
+      console.warn("Paged.js nem renderelte a lapokat – az eredeti nézet marad látható.");
+    }}
+  }}, 8000);
 }});
 </script>
 </head><body><div class="sheet">
