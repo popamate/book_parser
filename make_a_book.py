@@ -382,141 +382,29 @@ def create_book_html():
     content_html = ''
     toc_entries = []
     page_num = 1
-
-    # Állandók a tartalom becsült tördeléséhez
-    PAGE_LINE_CAPACITY = 24
-    AVG_CHARS_PER_LINE = 75
-    HEADING_LINE_COST = 4
-    HEADING_BUFFER = 4
-    SIGNATURE_LINE_COST = 3
-
+    
     # Állapot változók
     current_section = None  # 'preface', 'story', None
     current_title = None
     first_paragraph = False
-    section_blocks = []
+    section_content = []
     pending_author = None
     
     lines = content.split('\n')
     i = 0
     
-    def estimate_paragraph_lines(text: str, drop_cap: bool = False) -> int:
-        """Durva becslés, hogy egy bekezdés hány sort foglal a lapon."""
-
-        words = text.split()
-        if not words:
-            return 1
-
-        lines = 1
-        current = 0
-
-        for word in words:
-            length = len(word)
-            if current == 0:
-                current = length
-            elif current + 1 + length <= AVG_CHARS_PER_LINE:
-                current += 1 + length
-            else:
-                lines += 1
-                current = length
-
-        # kis plusz a bekezdés utáni térközre
-        lines += 1
-
-        # Az iniciálé kicsit magasabb helyet igényel
-        if drop_cap:
-            lines += 1
-
-        return max(lines, 1)
-
-    def render_section(section_type: str):
-        """A felgyűlt blokkokból oldalak építése becsült sortördeléssel."""
-
-        nonlocal content_html, page_num, section_blocks, toc_entries
-
-        if not section_blocks:
-            return
-
-        css_class = 'preface-content' if section_type == 'preface' else ''
-        first_heading = next((block['text'] for block in section_blocks if block['type'] == 'heading'), None)
-        section_label = first_heading or ('ELŐSZÓ' if section_type == 'preface' else 'SZÖVEG')
-
-        current_lines = []
-        line_usage = 0
-        first_page = True
-
-        def flush_page():
-            nonlocal current_lines, line_usage, content_html, page_num, first_page
-
-            if not current_lines:
-                return
-
-            label = section_label if first_page else f"{section_label} (folytatás)"
-            class_attr = f' {css_class}' if css_class else ''
-            content_html += f'        <!-- {label} -->\n        <div class="page">\n            <div class="page-content{class_attr}">\n'
-            content_html += ''.join(current_lines)
-            content_html += '            </div>\n'
-            content_html += f'            <span class="page-number">{page_num}</span>\n'
-            content_html += '        </div>\n'
-
-            page_num += 1
-            current_lines = []
-            line_usage = 0
-            first_page = False
-
-        for block in section_blocks:
-            btype = block['type']
-
-            if btype == 'heading':
-                # Ha a cím már nem fér vagy nem marad hely a kezdő bekezdésnek, új oldalt kezdünk
-                if line_usage + HEADING_LINE_COST + HEADING_BUFFER > PAGE_LINE_CAPACITY and current_lines:
-                    flush_page()
-
-                if not current_lines:
-                    # biztosan a cím oldal tetejére kerüljön
-                    pass
-
-                if block.get('toc_index') is not None:
-                    toc_entries[block['toc_index']]['page'] = page_num
-
-                current_lines.append(f"                <h2>{block['text']}</h2>\n")
-                line_usage += HEADING_LINE_COST
-                continue
-
-            if btype == 'paragraph':
-                drop_cap = block.get('drop_cap', False)
-                lines_needed = estimate_paragraph_lines(block['text'], drop_cap)
-
-                if line_usage + lines_needed > PAGE_LINE_CAPACITY and current_lines:
-                    flush_page()
-
-                class_names = []
-                if block.get('first'):
-                    class_names.append('first-p')
-                if drop_cap:
-                    class_names.append('drop-cap')
-
-                class_attr = f" class=\"{' '.join(class_names)}\"" if class_names else ''
-                current_lines.append(f"                <p{class_attr}>{block['text']}</p>\n")
-                line_usage += lines_needed
-                continue
-
-            if btype == 'signature':
-                # az aláírást inkább új oldalra visszük, ha már kevés hely maradt
-                if line_usage + SIGNATURE_LINE_COST > PAGE_LINE_CAPACITY and current_lines:
-                    flush_page()
-
-                current_lines.append(f"                <p class=\"author-sig\">{block['text']}</p>\n")
-                line_usage += SIGNATURE_LINE_COST
-
-        flush_page()
-        section_blocks = []
-
     def close_section(section_type):
         """Bezár egy szekciót (előszó vagy novella)"""
-        nonlocal section_blocks
+        nonlocal content_html, page_num, section_content
 
-        render_section(section_type)
+        if section_content:
+            # Kiírjuk az összegyűjtött bekezdéseket
+            for para in section_content:
+                content_html += para
+            section_content = []
+
+        content_html += f'            </div>\n            <span class="page-number">{page_num}</span>\n        </div>\n'
+        page_num += 1
         return section_type
     
     def add_author_page(author):
@@ -550,57 +438,27 @@ def create_book_html():
                 '999_hatso_borito',
             }
 
-            allowed_ext = {'.jpg', '.jpeg', '.png', '.webp'}
-            author_tokens = [tok for tok in author_lower.split('_') if tok]
-            author_compact = ''.join(author_tokens)
-
-            best_match = None
-            best_score = 0
-
             for img in sorted(os.listdir('images')):
                 stem = Path(img).stem
                 if stem in skip_stems:
                     continue
 
-                if Path(img).suffix.lower() not in allowed_ext:
-                    continue
-
                 img_slug = slugify(stem)
-                if not img_slug:
-                    continue
-
-                img_tokens = [tok for tok in img_slug.split('_') if tok]
-                shared = len(set(author_tokens) & set(img_tokens))
-
-                score = shared * 2
-
-                if author_lower and author_lower in img_slug:
-                    score += 3
-
-                if author_compact and author_compact in ''.join(img_tokens):
-                    score += 2
-
-                if img_tokens and author_tokens and img_tokens[0] == author_tokens[-1]:
-                    score += 1
-
-                if score > best_score:
-                    best_score = score
-                    best_match = img
-
-            if best_match and best_score >= 2:
-                content_html += f'''
+                if author_lower in img_slug:
+                    content_html += f'''
         <!-- KÉP: {author} -->
         <div class="page image-page">
             <div class="page-content">
-                <img src="images/{best_match}" alt="{author}">
+                <img src="images/{img}" alt="{author}">
             </div>
             <span class="page-number">{page_num}</span>
         </div>
 '''
-                image_found = True
-                page_num += 1
-                print(f"    - Kép találva: {best_match}")
-
+                    image_found = True
+                    page_num += 1
+                    print(f"    - Kép találva: {img}")
+                    break
+        
         if not image_found:
             content_html += f'''
         <!-- KÉP PLACEHOLDER: {author} -->
@@ -620,27 +478,18 @@ def create_book_html():
         # ELŐSZÓ kezdete
         if line == '[ELŐSZÓ]':
             print("  - Előszó kezdete")
-
-            if current_section:
-                if pending_author:
-                    section_blocks.append({
-                        'type': 'signature',
-                        'text': f'Írta: {pending_author}'
-                    })
-                    closed_type = close_section(current_section)
-                    if closed_type == 'story':
-                        add_author_page(pending_author)
-                    pending_author = None
-                else:
-                    close_section(current_section)
-
             current_section = 'preface'
-            section_blocks = []
-            section_blocks.append({'type': 'heading', 'text': 'ELŐSZÓ'})
+            content_html += f'''
+        <!-- ELŐSZÓ -->
+        <div class="page">
+            <div class="page-content preface-content">
+                <h2>ELŐSZÓ</h2>
+'''
             first_paragraph = True
+            section_content = []
             i += 1
             continue
-
+        
         # NOVELLA címe
         if line.startswith('[CÍM:'):
             new_title = line[5:-1].strip()
@@ -648,12 +497,8 @@ def create_book_html():
             # Ha ugyanaz a szerző (nincs új [SZERZŐ]) akkor folytathatjuk ugyanazon az oldalon
             if current_section == 'story' and pending_author is None:
                 print(f"  - Novella (folytatás): {new_title}")
-                toc_entries.append({'title': new_title, 'page': None})
-                section_blocks.append({
-                    'type': 'heading',
-                    'text': new_title,
-                    'toc_index': len(toc_entries) - 1
-                })
+                section_content.append(f'                <h2>{new_title}</h2>\n')
+                toc_entries.append({'title': new_title, 'page': page_num})
                 first_paragraph = True
                 current_title = new_title
                 i += 1
@@ -664,10 +509,7 @@ def create_book_html():
                 # Ha volt pending author, adjuk hozzá most
                 if pending_author:
                     # Szerző aláírás az előző szekcióhoz
-                    section_blocks.append({
-                        'type': 'signature',
-                        'text': f'Írta: {pending_author}'
-                    })
+                    section_content.append(f'                <p class="author-sig">Írta: {pending_author}</p>\n')
                     closed_type = close_section(current_section)
                     if closed_type == 'story':
                         add_author_page(pending_author)
@@ -678,16 +520,17 @@ def create_book_html():
 
             current_title = new_title
             print(f"  - Novella: {current_title}")
-
+            
             current_section = 'story'
-            section_blocks = []
-            toc_entries.append({'title': current_title, 'page': None})
-            section_blocks.append({
-                'type': 'heading',
-                'text': current_title,
-                'toc_index': len(toc_entries) - 1
-            })
+            content_html += f'''
+        <!-- NOVELLA: {current_title.upper()} -->
+        <div class="page">
+            <div class="page-content">
+                <h2>{current_title}</h2>
+'''
             first_paragraph = True
+            section_content = []
+            toc_entries.append({'title': current_title, 'page': page_num})
             i += 1
             continue
         
@@ -727,34 +570,21 @@ def create_book_html():
             
             # Összerakjuk a bekezdést
             paragraph = ' '.join(paragraph_lines)
-
+            
             if first_paragraph:
-                section_blocks.append({
-                    'type': 'paragraph',
-                    'text': paragraph,
-                    'first': True,
-                    'drop_cap': True
-                })
+                section_content.append(f'                <p class="first-p drop-cap">{paragraph}</p>\n')
                 first_paragraph = False
             else:
-                section_blocks.append({
-                    'type': 'paragraph',
-                    'text': paragraph,
-                    'first': False,
-                    'drop_cap': False
-                })
-
+                section_content.append(f'                <p>{paragraph}</p>\n')
+            
             i = j
         else:
             i += 1
-
+    
     # Utolsó szekció lezárása
     if current_section:
         if pending_author:
-            section_blocks.append({
-                'type': 'signature',
-                'text': f'Írta: {pending_author}'
-            })
+            section_content.append(f'                <p class="author-sig">Írta: {pending_author}</p>\n')
             closed_type = close_section(current_section)
             if closed_type == 'story':
                 add_author_page(pending_author)
@@ -764,13 +594,10 @@ def create_book_html():
     
     # TARTALOMJEGYZÉK befejezése
     for entry in toc_entries:
-        page_value = entry['page'] if entry['page'] is not None else ''
-        if isinstance(page_value, int):
-            page_value = str(page_value)
         toc_html += f'''                <div class="toc-entry">
                     <span>{entry['title']}</span>
                     <span class="toc-dots"></span>
-                    <span>{page_value}</span>
+                    <span>{entry['page']}</span>
                 </div>
 '''
     
