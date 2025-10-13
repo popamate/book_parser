@@ -44,17 +44,17 @@ def create_book_html():
         /* OLDAL BEÁLLÍTÁSOK NYOMTATÁSHOZ */
         @page {
             size: 230mm 230mm;
-            margin: 20mm 20mm 25mm 20mm;
+            margin: 22mm 22mm 25mm 22mm;
         }
-        
+
         @page :left {
-            margin-left: 20mm;
-            margin-right: 25mm;
+            margin-left: 22mm;
+            margin-right: 28mm;
         }
-        
+
         @page :right {
-            margin-left: 25mm;
-            margin-right: 20mm;
+            margin-left: 28mm;
+            margin-right: 22mm;
         }
         
         @page cover {
@@ -77,15 +77,18 @@ def create_book_html():
             color: #1a1a1a;
             background: #e0e0e0;
             margin: 0;
-            padding: 20px;
-            counter-reset: page 1;
+            padding: 40px 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
-        
+
         /* OLDAL KONTÉNER */
         .page-container {
             width: 230mm;
             margin: 0 auto;
             background: white;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.25);
         }
         
         /* ÁLTALÁNOS TARTALOM */
@@ -96,6 +99,10 @@ def create_book_html():
             -moz-hyphens: auto;
             orphans: 3;
             widows: 3;
+        }
+
+        .main-content {
+            counter-reset: page 1;
         }
         
         /* BORÍTÓ OLDALAK */
@@ -111,22 +118,49 @@ def create_book_html():
         }
         
         /* BELSŐ BORÍTÓ ÉS KÉPEK */
-        .inner-cover, .image-page {
+        .inner-cover {
             page-break-before: always;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
+            padding: 22mm 28mm 25mm 28mm;
         }
-        
-        .inner-cover img, .image-page img {
-            max-width: calc(100% - 10mm);
-            max-height: calc(100% - 45mm);
+
+        .inner-cover img {
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
             display: block;
         }
-        
+
+        .image-page {
+            page-break-before: always;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 22mm 22mm 25mm 22mm;
+            gap: 10mm;
+        }
+
+        .image-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
         .image-placeholder {
             color: #999;
             font-style: italic;
@@ -185,6 +219,12 @@ def create_book_html():
             margin-bottom: 0.4em;
             font-size: 9pt;
         }
+
+        .toc-entry a {
+            flex: 1 1 auto;
+            text-decoration: none;
+            color: inherit;
+        }
         
         .toc-dots {
             flex: 1;
@@ -194,8 +234,13 @@ def create_book_html():
             top: -0.3em;
         }
         
+        .toc-entry .page-num {
+            min-width: 2.5em;
+            text-align: right;
+        }
+
         .toc-entry .page-num::before {
-            content: target-counter(attr(href), page);
+            content: target-counter(attr(data-target), page);
         }
         
         /* NOVELLA CÍMEK */
@@ -270,6 +315,12 @@ def create_book_html():
             body {
                 background: white;
                 padding: 0;
+                display: block;
+            }
+
+            .page-container {
+                margin: 0;
+                box-shadow: none;
             }
         }
     </style>
@@ -327,7 +378,7 @@ def create_book_html():
     toc_html = '''
             <!-- TARTALOMJEGYZÉK -->
             <section class="toc-page" page="toc">
-                <h2>TARTALOM</h2>
+                <h2>TARTALOMJEGYZÉK</h2>
 '''
     
     # SZÖVEG FELDOLGOZÁSA - FLOW LOGIKA
@@ -356,13 +407,14 @@ def create_book_html():
 
     def add_author_page(author):
         nonlocal content_html
-        
+
         print(f"    Szerző: {author}")
-        
+
         author_lower = slugify(author)
         image_found = False
+        images_dir = Path('images')
 
-        if os.path.exists('images'):
+        if images_dir.exists():
             skip_stems = {
                 '000_elso_borito',
                 '001_elso_borito_belso',
@@ -370,8 +422,11 @@ def create_book_html():
                 '999_hatso_borito',
             }
 
-            for img in sorted(os.listdir('images')):
-                stem = Path(img).stem
+            for img_path in sorted(images_dir.iterdir()):
+                if not img_path.is_file():
+                    continue
+
+                stem = img_path.stem
                 if stem in skip_stems:
                     continue
 
@@ -379,19 +434,23 @@ def create_book_html():
                 if author_lower in img_slug:
                     content_html += f'''
                     <!-- KÉP: {author} -->
-                    <section class="image-page">
-                        <img src="images/{img}" alt="{author}">
+                    <section class="image-page" data-author="{author_lower}">
+                        <div class="image-wrapper">
+                            <img src="images/{img_path.name}" alt="{author}">
+                        </div>
                     </section>
 '''
                     image_found = True
-                    print(f"    - Kép találva: {img}")
+                    print(f"    - Kép találva: {img_path.name}")
                     break
-        
+
         if not image_found:
             content_html += f'''
                     <!-- KÉP PLACEHOLDER: {author} -->
-                    <section class="image-page">
-                        <div class="image-placeholder">[{author} képe]</div>
+                    <section class="image-page" data-author="{author_lower}">
+                        <div class="image-wrapper">
+                            <div class="image-placeholder">[{author} képe]</div>
+                        </div>
                     </section>
 '''
             print(f"    ! Kép nem található: {author_lower}")
@@ -489,9 +548,9 @@ def create_book_html():
     # TARTALOMJEGYZÉK befejezése
     for entry in toc_entries:
         toc_html += f'''                <div class="toc-entry">
-                    <a href="#{entry['slug']}">{entry['title']}</a>
+                    <a href="#{entry['slug']}" class="toc-link">{entry['title']}</a>
                     <span class="toc-dots"></span>
-                    <span class="page-num"></span>
+                    <span class="page-num" data-target="#{entry['slug']}"></span>
                 </div>
 '''
     
@@ -499,7 +558,7 @@ def create_book_html():
     
     # ÖSSZERAKJUK (TOC majd content)
     html += toc_html
-    html += '            <main class="main-content" counter-reset="page 1">\n'
+    html += '            <main class="main-content">\n'
     html += content_html
     html += '            </main>\n'
     
