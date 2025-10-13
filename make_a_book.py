@@ -1,14 +1,39 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 
 """
 ÉRTÉKŐRZŐK könyv HTML generátor Paged.js-hez
 JAVÍTOTT v2 - target-counter hiba megoldva
 """
 
+import argparse
+import logging
 import os, re, sys, unicodedata
 from pathlib import Path
 from html import escape
+
+# ------------ LOGGING ------------
+logger = logging.getLogger("book_builder")
+
+
+def setup_logging(verbosity: int) -> None:
+    """Általános naplózás beállítása."""
+
+    if verbosity is None:
+        level = logging.INFO
+    elif verbosity < 0:
+        level = logging.WARNING
+    elif verbosity == 0:
+        level = logging.INFO
+    else:
+        level = logging.DEBUG
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.setLevel(level)
 
 # ------------ META ------------
 BOOK_TITLE = "ÉRTÉKŐRZŐK"
@@ -47,6 +72,7 @@ def find_author_image(author: str) -> str | None:
     if not author or not os.path.isdir(IMG_DIR):
         return None
     target = set(norm(author).split())
+    logger.debug("Portré keresés: %s → %s", author, ", ".join(sorted(target)))
     best, best_score = None, 0.0
     for fn in os.listdir(IMG_DIR):
         p = Path(IMG_DIR) / fn
@@ -64,7 +90,13 @@ def find_author_image(author: str) -> str | None:
             score = max(score, 0.95)
         if score > best_score:
             best_score, best = score, str(p).replace("\\", "/")
-    return best if best_score >= 0.5 else None
+            logger.debug("  ↳ jelölt: %s (%.2f)", best, best_score)
+    if best and best_score >= 0.5:
+        logger.info("  ✓ Portré társítva: %s", best)
+        return best
+    if best:
+        logger.warning("  ⚠ Gyenge portré-találat: %s (%.2f)", best, best_score)
+    return None
 
 # ------------ PARSER ------------
 TAG_TITLE   = re.compile(r"^\[CÍM:\s*(.+?)\]$")
@@ -114,7 +146,7 @@ def parse_text(raw_text: str):
                 cur.add_paragraph(text)
         buf = []
 
-    for line in lines:
+    for idx, line in enumerate(lines, 1):
         s = line.strip()
 
         if not s:
@@ -127,6 +159,7 @@ def parse_text(raw_text: str):
                 sections.append(cur)
             cur = Section("preface", "ELŐSZÓ")
             cur.anchor = unique_anchor("sec-eloszo")
+            logger.info("[%03d] Előszó blokk indítása (anchor=%s)", idx, cur.anchor)
             expecting_subtitle = False
             buf = []
             continue
@@ -141,6 +174,7 @@ def parse_text(raw_text: str):
             cur = Section("story", title)
             slug = slugify(title) or "resz"
             cur.anchor = unique_anchor("sec-" + slug)
+            logger.info("[%03d] Új történet: %s (anchor=%s)", idx, title, cur.anchor)
             expecting_subtitle = True
             buf = []
             continue
@@ -151,22 +185,26 @@ def parse_text(raw_text: str):
             cur.author = m.group(2).strip()
             cur.author_image = find_author_image(cur.author)
             sections.append(cur)
+            logger.info("[%03d] Szerző lezárás: %s", idx, cur.author)
             cur = None
             expecting_subtitle = False
             buf = []
             continue
 
         if cur is None:
+            logger.debug("[%03d] Árválkodó sor kihagyva: %s", idx, s)
             continue
 
         if expecting_subtitle and cur.subtitle is None:
             cur.subtitle = s
+            logger.info("[%03d]  ↳ alcím: %s", idx, s)
             expecting_subtitle = False
             continue
 
         if (len(s) <= 80 and "\t" not in s and s.count(".")==0 and s.count("?")==0 and s.count("!")==0):
             if not buf:
                 cur.add_subhead(s)
+                logger.debug("[%03d]  ↳ köztes alcím: %s", idx, s)
                 continue
 
         buf.append(s)
@@ -174,6 +212,7 @@ def parse_text(raw_text: str):
     if cur:
         flush_buf()
         sections.append(cur)
+        logger.warning("Utolsó szakasz automatikusan lezárva: %s", cur.title or "(névtelen)")
 
     return sections
 
@@ -184,6 +223,29 @@ def mark_last_by_author(sections):
             last_idx[sec.author] = i
     for i, sec in enumerate(sections):
         sec.show_author = (sec.kind == "story" and sec.author and last_idx.get(sec.author) == i)
+        if sec.kind == "story" and not sec.author:
+            logger.warning("Hiányzó szerző: %s", sec.title)
+
+
+def summarize_sections(sections):
+    logger.info("Összesen %d szakasz feldolgozva.", len(sections))
+    for sec in sections:
+        parts = sum(1 for kind, _ in sec.parts if kind == "p")
+        heads = sum(1 for kind, _ in sec.parts if kind == "h3")
+        logger.info(
+            "  • %-8s | cím=%s | anchor=%s | bekezdés=%d | alcím=%d",
+            sec.kind,
+            sec.title or "(n/a)",
+            sec.anchor or "(n/a)",
+            parts,
+            heads,
+        )
+        if sec.subtitle:
+            logger.debug("     ↳ alcím: %s", sec.subtitle)
+        if sec.author:
+            logger.debug("     ↳ szerző: %s", sec.author)
+        if sec.author_image:
+            logger.debug("     ↳ portré: %s", sec.author_image)
 
 # ------------ HTML ------------
 def build_html(sections):
@@ -681,42 +743,72 @@ Paged.registerHandlers(BookHandlers);
     return "".join(html)
 
 # ------------ FŐ ------------
-def main():
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description="ÉRTÉKŐRZŐK könyv HTML generátor")
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="count",
+        default=0,
+        help="Részletesebb naplózás (többször adva még részletesebb)",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Csak a figyelmeztetések jelenjenek meg",
+    )
+
+    args = parser.parse_args(argv)
+
+    verbosity = args.debug
+    if args.quiet:
+        verbosity = -1
+
+    setup_logging(verbosity)
+
     script_dir = Path(__file__).parent
     os.chdir(script_dir)
-    print(f"📁 Munkamappa: {os.getcwd()}")
+    logger.info("📁 Munkamappa: %s", os.getcwd())
 
     if not os.path.exists(TEXT_FILE):
-        print(f"❌ HIBA: {TEXT_FILE} nem található!")
+        logger.error("❌ HIBA: %s nem található!", TEXT_FILE)
         sys.exit(1)
 
     raw = Path(TEXT_FILE).read_text(encoding="utf-8", errors="replace")
+    logger.info("Bemeneti sorok száma: %d", raw.count("\n") + 1)
+
     sections = parse_text(raw)
     if not sections:
-        print("❌ HIBA: Nem sikerült szekciókat találni.")
+        logger.error("❌ HIBA: Nem sikerült szekciókat találni.")
         sys.exit(2)
 
     mark_last_by_author(sections)
+    summarize_sections(sections)
+    anchors = [sec.anchor for sec in sections if sec.anchor]
+    if len(set(anchors)) != len(anchors):
+        logger.warning("⚠ Ismétlődő anchor azonosítók találhatók!")
+
     html = build_html(sections)
     Path(OUT_FILE).write_text(html, encoding="utf-8")
 
-    print("\n" + "="*60)
-    print(f"✓ JAVÍTOTT v2 kész! {OUT_FILE}")
-    print("="*60)
-    print("\n🔧 JAVÍTÁSOK v2:")
-    print("  • target-counter hiba javítva")
-    print("  • TOC hivatkozások átstrukturálva") 
-    print("  • Hibakezelés hozzáadva a JavaScript-hez")
-    print("  • Ellenőrzés, hogy minden cél elem létezik")
-    print("\n🚀 INDÍTÁS:")
-    print("  python -m http.server 8000")
-    print("  http://localhost:8000/book.html")
-    print("\n🐛 DEBUG:")
-    print("  Nyisd meg az F12 konzolt a részletes hibaüzenetekért!")
-    print("\n📝 Ha továbbra is hiba van:")
-    print("  1. Ellenőrizd, hogy a text.txt megfelelő formátumú")
-    print("  2. Nézd meg a konzolban, mely elemek hiányoznak")
-    print("  3. Győződj meg róla, hogy minden [CÍM:...] után van [SZERZŐ:...]")
+    logger.info("\n" + "=" * 60)
+    logger.info("✓ JAVÍTOTT v2 kész! %s", OUT_FILE)
+    logger.info("=" * 60)
+    logger.info("\n🔧 JAVÍTÁSOK v2:")
+    logger.info("  • target-counter hiba javítva")
+    logger.info("  • TOC hivatkozások átstrukturálva")
+    logger.info("  • Hibakezelés hozzáadva a JavaScript-hez")
+    logger.info("  • Ellenőrzés, hogy minden cél elem létezik")
+    logger.info("\n🚀 INDÍTÁS:")
+    logger.info("  python -m http.server 8000")
+    logger.info("  http://localhost:8000/book.html")
+    logger.info("\n🐛 DEBUG:")
+    logger.info("  Nyisd meg az F12 konzolt a részletes hibaüzenetekért!")
+    logger.info("\n📝 Ha továbbra is hiba van:")
+    logger.info("  1. Ellenőrizd, hogy a text.txt megfelelő formátumú")
+    logger.info("  2. Nézd meg a konzolban, mely elemek hiányoznak")
+    logger.info("  3. Győződj meg róla, hogy minden [CÍM:...] után van [SZERZŐ:...]")
 
 if __name__ == "__main__":
     main()
