@@ -98,6 +98,30 @@ def find_author_image(author: str) -> str | None:
         logger.warning("  ⚠ Gyenge portré-találat: %s (%.2f)", best, best_score)
     return None
 
+
+def looks_like_subtitle(line: str) -> bool:
+    """Heuriszta annak eldöntésére, hogy egy sor alcímnek tűnik-e."""
+
+    if not line:
+        return False
+    if len(line) > 80 or "\t" in line:
+        return False
+    if any(ch in line for ch in ".?!"):
+        return False
+    # Az alcímek általában nem számokból állnak és tartalmaznak szóközt.
+    words = line.strip().split()
+    if len(words) == 1:
+        word = words[0]
+        if len(word) < 3 or word.isdigit():
+            return False
+        # Engedjük az egy szavas alcímeket, ha nem teljes egészében nagybetűs szám/karakter sorozat.
+        if word.isupper() and len(word) <= 4:
+            return False
+        return True
+    if all(word.isdigit() for word in words):
+        return False
+    return True
+
 # ------------ PARSER ------------
 TAG_TITLE   = re.compile(r"^\[CÍM:\s*(.+?)\]$")
 TAG_AUTHOR  = re.compile(r"^\[(SZERZŐ|SZERZŐ_TEMP):\s*(.+?)\]$")
@@ -196,12 +220,16 @@ def parse_text(raw_text: str):
             continue
 
         if expecting_subtitle and cur.subtitle is None:
-            cur.subtitle = s
-            logger.info("[%03d]  ↳ alcím: %s", idx, s)
-            expecting_subtitle = False
-            continue
+            if looks_like_subtitle(s):
+                cur.subtitle = s
+                logger.info("[%03d]  ↳ alcím: %s", idx, s)
+                expecting_subtitle = False
+                continue
+            else:
+                logger.debug("[%03d]  ↳ alcím kihagyva, nem tűnik alcímnek: %s", idx, s)
+                expecting_subtitle = False
 
-        if (len(s) <= 80 and "\t" not in s and s.count(".")==0 and s.count("?")==0 and s.count("!")==0):
+        if looks_like_subtitle(s):
             if not buf:
                 cur.add_subhead(s)
                 logger.debug("[%03d]  ↳ köztes alcím: %s", idx, s)
