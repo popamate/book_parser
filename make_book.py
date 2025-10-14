@@ -5,6 +5,49 @@ import os
 import unicodedata
 from pathlib import Path
 
+
+def _slugify_image_name(value: str) -> str:
+    """Normalise accented characters and prepare an image slug."""
+
+    normalized = unicodedata.normalize('NFKD', value)
+    without_accents = ''.join(
+        ch for ch in normalized if not unicodedata.combining(ch)
+    )
+    cleaned = (
+        without_accents.lower()
+        .replace(' ', '_')
+        .replace('.', '')
+        .replace('-', '_')
+    )
+    return cleaned
+
+
+def _find_author_image(author: str) -> str | None:
+    """Return the first matching image filename for the given author."""
+
+    if not os.path.exists('images'):
+        return None
+
+    skip_stems = {
+        '000_elso_borito',
+        '001_elso_borito_belso',
+        '998_hatso_borito_belso',
+        '999_hatso_borito',
+    }
+
+    author_slug = _slugify_image_name(author)
+
+    for img in sorted(os.listdir('images')):
+        stem = Path(img).stem
+        if stem in skip_stems:
+            continue
+
+        img_slug = _slugify_image_name(stem)
+        if author_slug in img_slug:
+            return img
+
+    return None
+
 def create_book_html():
     """Könyv HTML generálása formázott szövegből - JAVÍTOTT VERZIÓ"""
     
@@ -410,56 +453,25 @@ def create_book_html():
     def add_author_page(author):
         """Szerző oldal és kép hozzáadása"""
         nonlocal content_html, page_num
-        
+
         print(f"    Szerző: {author}")
-        
+
         # KÉP OLDAL
-        def slugify(value: str) -> str:
-            normalized = unicodedata.normalize('NFKD', value)
-            without_accents = ''.join(
-                ch for ch in normalized if not unicodedata.combining(ch)
-            )
-            cleaned = (
-                without_accents.lower()
-                .replace(' ', '_')
-                .replace('.', '')
-                .replace('-', '_')
-            )
-            return cleaned
+        matched_image = _find_author_image(author)
 
-        author_lower = slugify(author)
-        image_found = False
-
-        if os.path.exists('images'):
-            skip_stems = {
-                '000_elso_borito',
-                '001_elso_borito_belso',
-                '998_hatso_borito_belso',
-                '999_hatso_borito',
-            }
-
-            for img in sorted(os.listdir('images')):
-                stem = Path(img).stem
-                if stem in skip_stems:
-                    continue
-
-                img_slug = slugify(stem)
-                if author_lower in img_slug:
-                    content_html += f'''
+        if matched_image:
+            content_html += f'''
         <!-- KÉP: {author} -->
         <div class="page image-page">
             <div class="page-content">
-                <img src="images/{img}" alt="{author}">
+                <img src="images/{matched_image}" alt="{author}">
             </div>
             <span class="page-number">{page_num}</span>
         </div>
 '''
-                    image_found = True
-                    page_num += 1
-                    print(f"    - Kép találva: {img}")
-                    break
-        
-        if not image_found:
+            page_num += 1
+            print(f"    - Kép találva: {matched_image}")
+        else:
             content_html += f'''
         <!-- KÉP PLACEHOLDER: {author} -->
         <div class="page image-page">
@@ -470,7 +482,8 @@ def create_book_html():
         </div>
 '''
             page_num += 1
-            print(f"    ! Kép nem található: {author_lower}")
+            author_slug = _slugify_image_name(author)
+            print(f"    ! Kép nem található: {author_slug}")
     
     while i < len(lines):
         line = lines[i].strip()
