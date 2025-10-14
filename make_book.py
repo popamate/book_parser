@@ -22,7 +22,7 @@ def create_book_html():
     
     print("✅ text.txt megtalálva")
     
-    # HTML fejléc (frissítve a flow-hoz)
+    # HTML fejléc (ugyanaz mint az eredeti)
     html = '''<!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -44,29 +44,15 @@ def create_book_html():
         /* OLDAL BEÁLLÍTÁSOK NYOMTATÁSHOZ */
         @page {
             size: 230mm 230mm;
-            margin: 22mm 22mm 25mm 22mm;
-        }
-
-        @page :left {
-            margin-left: 22mm;
-            margin-right: 28mm;
-        }
-
-        @page :right {
-            margin-left: 28mm;
-            margin-right: 22mm;
-        }
-        
-        @page cover {
             margin: 0;
         }
         
-        @page front {
-            @bottom-center { content: none; }
+        @page :left {
+            margin: 20mm 25mm 25mm 20mm;
         }
         
-        @page toc {
-            @bottom-center { content: counter(page, lower-roman); }
+        @page :right {
+            margin: 20mm 20mm 25mm 25mm;
         }
         
         /* ALAP STÍLUSOK */
@@ -77,37 +63,51 @@ def create_book_html():
             color: #1a1a1a;
             background: #e0e0e0;
             margin: 0;
-            padding: 40px 0;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            padding: 20px;
         }
-
+        
         /* OLDAL KONTÉNER */
         .page-container {
             width: 230mm;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.25);
         }
         
-        /* ÁLTALÁNOS TARTALOM */
-        .content {
-            text-align: justify;
+        /* MINDEN OLDAL */
+        .page {
+            width: 230mm;
+            height: 230mm;
+            background: white;
+            position: relative;
+            margin: 0 auto 10mm;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            page-break-after: always;
+        }
+        
+        /* TARTALOM TERÜLETEK */
+        .page-content {
+            position: absolute;
+            inset: 0;
+            padding: 20mm 20mm 25mm 20mm;
+            text-align: left;
             hyphens: auto;
             -webkit-hyphens: auto;
             -moz-hyphens: auto;
-            orphans: 3;
-            widows: 3;
         }
 
-        .main-content {
-            counter-reset: page 1;
+        /* BAL OLDAL (páros) */
+        .page:nth-child(even) .page-content {
+            padding-right: 25mm;
+        }
+
+        /* JOBB OLDAL (páratlan) */
+        .page:nth-child(odd) .page-content {
+            padding-left: 25mm;
         }
         
         /* BORÍTÓ OLDALAK */
         .cover-page {
-            page-break-after: always;
+            padding: 0 !important;
         }
         
         .cover-page img {
@@ -117,59 +117,8 @@ def create_book_html():
             display: block;
         }
         
-        /* BELSŐ BORÍTÓ ÉS KÉPEK */
-        .inner-cover {
-            page-break-before: always;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 22mm 28mm 25mm 28mm;
-        }
-
-        .inner-cover img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: block;
-        }
-
-        .image-page {
-            page-break-before: always;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 22mm 22mm 25mm 22mm;
-            gap: 10mm;
-        }
-
-        .image-wrapper {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .image-wrapper img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: block;
-        }
-
-        .image-placeholder {
-            color: #999;
-            font-style: italic;
-            font-size: 14pt;
-        }
-        
         /* CÍMOLDAL */
-        .title-page {
-            page-break-before: always;
+        .title-page .page-content {
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -191,8 +140,7 @@ def create_book_html():
         }
         
         /* IMPRESSZUM */
-        .impressum-page {
-            page-break-before: always;
+        .impressum-page .page-content {
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -200,50 +148,7 @@ def create_book_html():
             text-align: center;
         }
         
-        /* TARTALOMJEGYZÉK */
-        .toc-page {
-            page-break-before: always;
-            counter-reset: page 1;
-        }
-        
-        .toc-page h2 {
-            font-size: 18pt;
-            margin-bottom: 1.2em;
-            text-align: center;
-            text-transform: uppercase;
-        }
-        
-        .toc-entry {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.4em;
-            font-size: 9pt;
-        }
-
-        .toc-entry a {
-            flex: 1 1 auto;
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        .toc-dots {
-            flex: 1;
-            border-bottom: 1px dotted #666;
-            margin: 0 0.5em;
-            position: relative;
-            top: -0.3em;
-        }
-        
-        .toc-entry .page-num {
-            min-width: 2.5em;
-            text-align: right;
-        }
-
-        .toc-entry .page-num::before {
-            content: target-counter(attr(data-target), page);
-        }
-        
-        /* NOVELLA CÍMEK */
+        /* NOVELLA CÍMEK - NAGYBETŰS */
         h2 {
             font-size: 19pt;
             margin-bottom: 1.5em;
@@ -251,19 +156,19 @@ def create_book_html():
             font-weight: normal;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            page-break-before: avoid;
-            margin-top: 3em;
         }
 
-        h2:first-of-type {
-            margin-top: 0;
+        .page-content h2:not(:first-child) {
+            margin-top: 2em;
         }
         
         /* BEKEZDÉSEK */
         p {
             margin-bottom: 0.5em;
             text-indent: 0.5cm;
-            text-align: justify;
+            text-align: left;
+            orphans: 3;
+            widows: 3;
         }
         
         /* Első bekezdés és cím utáni */
@@ -298,29 +203,104 @@ def create_book_html():
             font-style: italic;
             margin-top: 2em;
             text-indent: 0;
-            page-break-after: always;
         }
         
+        /* KÉPOLDAL */
+        .image-page .page-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20mm;
+        }
+        
+        .image-page img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .image-placeholder {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            font-size: 14pt;
+        }
+        
+        /* TARTALOMJEGYZÉK */
+        .toc-page h2 {
+            margin-bottom: 1.2em;
+            font-size: 18pt;
+        }
+        
+        .toc-entry {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4em;
+            font-size: 9pt;
+        }
+        
+        .toc-dots {
+            flex: 1;
+            border-bottom: 1px dotted #666;
+            margin: 0 0.5em;
+            position: relative;
+            top: -0.3em;
+        }
+
         /* OLDALSZÁMOK */
-        @page {
-            @bottom-center {
-                content: counter(page);
-                font-size: 10pt;
-                font-family: 'EB Garamond', serif;
-            }
+        .page-number {
+            position: absolute;
+            bottom: 12mm;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10pt;
+            font-family: 'EB Garamond', serif;
         }
-        
+
         /* NYOMTATÁSI BEÁLLÍTÁSOK */
         @media print {
             body {
                 background: white;
                 padding: 0;
-                display: block;
             }
-
-            .page-container {
+            
+            .page {
                 margin: 0;
                 box-shadow: none;
+                page-break-after: always;
+            }
+            
+            .page-container {
+                margin: 0;
+            }
+        }
+        
+        /* KÉPERNYŐN VALÓ MEGJELENÍTÉS */
+        @media screen {
+            .page {
+                border: 1px solid #ddd;
+            }
+            
+            /* Margó jelzések */
+            .page::before {
+                content: "";
+                position: absolute;
+                border: 1px dashed #ccc;
+                pointer-events: none;
+            }
+            
+            .page:nth-child(even)::before {
+                top: 20mm;
+                left: 20mm;
+                right: 25mm;
+                bottom: 25mm;
+            }
+            
+            .page:nth-child(odd)::before {
+                top: 20mm;
+                left: 25mm;
+                right: 20mm;
+                bottom: 25mm;
             }
         }
     </style>
@@ -330,91 +310,127 @@ def create_book_html():
 </head>
 <body>
     <div class="page-container">
-        <div class="content">
 '''
     
     # BORÍTÓ (KÜLSŐ)
     html += '''
-            <!-- ELSŐ BORÍTÓ -->
-            <section class="cover-page" page="cover">
+        <!-- ELSŐ BORÍTÓ -->
+        <div class="page cover-page">
 '''
     if os.path.exists('images/000_elso_borito.jpg'):
-        html += '                <img src="images/000_elso_borito.jpg" alt="Borító">\n'
+        html += '            <img src="images/000_elso_borito.jpg" alt="Borító">\n'
     else:
-        html += '                <div class="image-placeholder">[Első borító]</div>\n'
-    html += '            </section>\n'
+        html += '''            <div class="page-content">
+                <div class="image-placeholder">[Első borító]</div>
+            </div>\n'''
+    html += '        </div>\n'
     
     # BORÍTÓ BELSŐ
     html += '''
-            <!-- ELSŐ BORÍTÓ BELSŐ -->
-            <section class="inner-cover" page="front">
+        <!-- ELSŐ BORÍTÓ BELSŐ -->
+        <div class="page cover-page">
 '''
     if os.path.exists('images/001_elso_borito_belso.jpg'):
-        html += '                <img src="images/001_elso_borito_belso.jpg" alt="Belső borító">\n'
+        html += '            <img src="images/001_elso_borito_belso.jpg" alt="Belső borító">\n'
     else:
-        html += '                <div class="image-placeholder">[Első borító belső oldala]</div>\n'
-    html += '            </section>\n'
+        html += '''            <div class="page-content">
+                <div class="image-placeholder">[Első borító belső oldala]</div>
+            </div>\n'''
+    html += '        </div>\n'
     
     # CÍMOLDAL
     html += '''
-            <!-- CÍMOLDAL -->
-            <section class="title-page" page="front">
+        <!-- CÍMOLDAL -->
+        <div class="page title-page">
+            <div class="page-content">
                 <h1>ÉRTÉKŐRZŐK</h1>
                 <p class="subtitle">Vásárosbéci történetek</p>
-            </section>
+            </div>
+        </div>
 '''
     
     # IMPRESSZUM
     html += '''
-            <!-- IMPRESSZUM -->
-            <section class="impressum-page" page="front">
+        <!-- IMPRESSZUM -->
+        <div class="page impressum-page">
+            <div class="page-content">
                 <p>Szerkesztő: Bánki Eszter</p>
                 <p style="margin-top: 1em;">2025</p>
                 <p style="margin-top: 2em; font-size: 10pt;">© Minden jog fenntartva</p>
-            </section>
+            </div>
+        </div>
 '''
     
     # TARTALOMJEGYZÉK (később töltjük ki)
     toc_html = '''
-            <!-- TARTALOMJEGYZÉK -->
-            <section class="toc-page" page="toc">
-                <h2>TARTALOMJEGYZÉK</h2>
+        <!-- TARTALOMJEGYZÉK -->
+        <div class="page toc-page">
+            <div class="page-content">
+                <h2>TARTALOM</h2>
 '''
     
-    # SZÖVEG FELDOLGOZÁSA - FLOW LOGIKA
+    # SZÖVEG FELDOLGOZÁSA - JAVÍTOTT LOGIKA
     print("\nSzöveg feldolgozása...")
     
     with open('text.txt', 'r', encoding='utf-8') as f:
         content = f.read()
     
+    # Felosztjuk a szöveget blokkokra (elválasztó: dupla sortörés VAGY [TAG])
+    # De először normalizáljuk a sortöréseket
     content = content.replace('\r\n', '\n').replace('\r', '\n')
     
     content_html = ''
     toc_entries = []
+    page_num = 1
     
-    current_section = None
+    # Állapot változók
+    current_section = None  # 'preface', 'story', None
     current_title = None
     first_paragraph = False
+    section_content = []
     pending_author = None
+    
     lines = content.split('\n')
     i = 0
     
-    def slugify(value: str) -> str:
-        normalized = unicodedata.normalize('NFKD', value)
-        without_accents = ''.join(ch for ch in normalized if not unicodedata.combining(ch))
-        cleaned = without_accents.lower().replace(' ', '_').replace('.', '').replace('-', '_')
-        return cleaned
+    def close_section(section_type):
+        """Bezár egy szekciót (előszó vagy novella)"""
+        nonlocal content_html, page_num, section_content
 
+        if section_content:
+            # Kiírjuk az összegyűjtött bekezdéseket
+            for para in section_content:
+                content_html += para
+            section_content = []
+
+        content_html += f'            </div>\n            <span class="page-number">{page_num}</span>\n        </div>\n'
+        page_num += 1
+        return section_type
+    
     def add_author_page(author):
-        nonlocal content_html
-
+        """Szerző oldal és kép hozzáadása"""
+        nonlocal content_html, page_num
+        
         print(f"    Szerző: {author}")
+        
+        # KÉP OLDAL
+        def slugify(value: str) -> str:
+            normalized = unicodedata.normalize('NFKD', value)
+            without_accents = ''.join(
+                ch for ch in normalized if not unicodedata.combining(ch)
+            )
+            cleaned = (
+                without_accents.lower()
+                .replace(' ', '_')
+                .replace('.', '')
+                .replace('-', '_')
+            )
+            return cleaned
 
         author_lower = slugify(author)
         image_found = False
-        images_dir = Path('images')
 
-        if images_dir.exists():
+        if os.path.exists('images'):
             skip_stems = {
                 '000_elso_borito',
                 '001_elso_borito_belso',
@@ -422,37 +438,38 @@ def create_book_html():
                 '999_hatso_borito',
             }
 
-            for img_path in sorted(images_dir.iterdir()):
-                if not img_path.is_file():
-                    continue
-
-                stem = img_path.stem
+            for img in sorted(os.listdir('images')):
+                stem = Path(img).stem
                 if stem in skip_stems:
                     continue
 
                 img_slug = slugify(stem)
                 if author_lower in img_slug:
                     content_html += f'''
-                    <!-- KÉP: {author} -->
-                    <section class="image-page" data-author="{author_lower}">
-                        <div class="image-wrapper">
-                            <img src="images/{img_path.name}" alt="{author}">
-                        </div>
-                    </section>
+        <!-- KÉP: {author} -->
+        <div class="page image-page">
+            <div class="page-content">
+                <img src="images/{img}" alt="{author}">
+            </div>
+            <span class="page-number">{page_num}</span>
+        </div>
 '''
                     image_found = True
-                    print(f"    - Kép találva: {img_path.name}")
+                    page_num += 1
+                    print(f"    - Kép találva: {img}")
                     break
-
+        
         if not image_found:
             content_html += f'''
-                    <!-- KÉP PLACEHOLDER: {author} -->
-                    <section class="image-page" data-author="{author_lower}">
-                        <div class="image-wrapper">
-                            <div class="image-placeholder">[{author} képe]</div>
-                        </div>
-                    </section>
+        <!-- KÉP PLACEHOLDER: {author} -->
+        <div class="page image-page">
+            <div class="page-content">
+                <div class="image-placeholder">[{author} képe]</div>
+            </div>
+            <span class="page-number">{page_num}</span>
+        </div>
 '''
+            page_num += 1
             print(f"    ! Kép nem található: {author_lower}")
     
     while i < len(lines):
@@ -462,42 +479,65 @@ def create_book_html():
         if line == '[ELŐSZÓ]':
             print("  - Előszó kezdete")
             current_section = 'preface'
-            title_slug = slugify('Előszó')
-            content_html += f'<div class="preface-content">\n'
-            content_html += f'    <h2 id="{title_slug}">ELŐSZÓ</h2>\n'
-            toc_entries.append({'title': 'Előszó', 'slug': title_slug})
+            content_html += f'''
+        <!-- ELŐSZÓ -->
+        <div class="page">
+            <div class="page-content preface-content">
+                <h2>ELŐSZÓ</h2>
+'''
             first_paragraph = True
+            section_content = []
             i += 1
             continue
         
         # NOVELLA címe
         if line.startswith('[CÍM:'):
             new_title = line[5:-1].strip()
-            title_slug = slugify(new_title)
-            
+
+            # Ha ugyanaz a szerző (nincs új [SZERZŐ]) akkor folytathatjuk ugyanazon az oldalon
+            if current_section == 'story' and pending_author is None:
+                print(f"  - Novella (folytatás): {new_title}")
+                section_content.append(f'                <h2>{new_title}</h2>\n')
+                toc_entries.append({'title': new_title, 'page': page_num})
+                first_paragraph = True
+                current_title = new_title
+                i += 1
+                continue
+
             # Ha volt előző szekció, zárjuk le
             if current_section:
+                # Ha volt pending author, adjuk hozzá most
                 if pending_author:
-                    content_html += f'    <p class="author-sig">Írta: {pending_author}</p>\n'
-                    if current_section == 'story':
+                    # Szerző aláírás az előző szekcióhoz
+                    section_content.append(f'                <p class="author-sig">Írta: {pending_author}</p>\n')
+                    closed_type = close_section(current_section)
+                    if closed_type == 'story':
                         add_author_page(pending_author)
                     pending_author = None
-                if current_section == 'preface':
-                    content_html += '</div>\n'
+                else:
+                    close_section(current_section)
                 current_section = None
-            
+
             current_title = new_title
             print(f"  - Novella: {current_title}")
+            
             current_section = 'story'
-            content_html += f'    <h2 id="{title_slug}">{current_title}</h2>\n'
+            content_html += f'''
+        <!-- NOVELLA: {current_title.upper()} -->
+        <div class="page">
+            <div class="page-content">
+                <h2>{current_title}</h2>
+'''
             first_paragraph = True
-            toc_entries.append({'title': current_title, 'slug': title_slug})
+            section_content = []
+            toc_entries.append({'title': current_title, 'page': page_num})
             i += 1
             continue
         
         # SZERZŐ
         if line.startswith('[SZERZŐ:') and not line.startswith('[SZERZŐ_TEMP:'):
-            pending_author = line[8:-1].strip()
+            author = line[8:-1].strip()
+            pending_author = author
             i += 1
             continue
         
@@ -513,22 +553,29 @@ def create_book_html():
         
         # BEKEZDÉS
         if current_section:
+            # Ellenőrizzük, hogy több sor tartozik-e ugyanahhoz a bekezdéshez
+            # (azaz nincs dupla sortörés vagy új tag)
             paragraph_lines = [line]
             j = i + 1
+            
             while j < len(lines):
                 next_line = lines[j].strip()
+                
+                # Ha üres sor vagy új tag, vége a bekezdésnek
                 if not next_line or next_line.startswith('['):
                     break
+                
                 paragraph_lines.append(next_line)
                 j += 1
             
+            # Összerakjuk a bekezdést
             paragraph = ' '.join(paragraph_lines)
             
             if first_paragraph:
-                content_html += f'    <p class="first-p drop-cap">{paragraph}</p>\n'
+                section_content.append(f'                <p class="first-p drop-cap">{paragraph}</p>\n')
                 first_paragraph = False
             else:
-                content_html += f'    <p>{paragraph}</p>\n'
+                section_content.append(f'                <p>{paragraph}</p>\n')
             
             i = j
         else:
@@ -537,55 +584,59 @@ def create_book_html():
     # Utolsó szekció lezárása
     if current_section:
         if pending_author:
-            content_html += f'    <p class="author-sig">Írta: {pending_author}</p>\n'
-            if current_section == 'story':
+            section_content.append(f'                <p class="author-sig">Írta: {pending_author}</p>\n')
+            closed_type = close_section(current_section)
+            if closed_type == 'story':
                 add_author_page(pending_author)
-            pending_author = None
-        if current_section == 'preface':
-            content_html += '</div>\n'
+        else:
+            close_section(current_section)
         current_section = None
     
     # TARTALOMJEGYZÉK befejezése
     for entry in toc_entries:
         toc_html += f'''                <div class="toc-entry">
-                    <a href="#{entry['slug']}" class="toc-link">{entry['title']}</a>
+                    <span>{entry['title']}</span>
                     <span class="toc-dots"></span>
-                    <span class="page-num" data-target="#{entry['slug']}"></span>
+                    <span>{entry['page']}</span>
                 </div>
 '''
     
-    toc_html += '            </section>\n'
+    toc_html += '''            </div>
+            <span class="page-number">I</span>
+        </div>
+'''
     
-    # ÖSSZERAKJUK (TOC majd content)
+    # ÖSSZERAKJUK
     html += toc_html
-    html += '            <main class="main-content">\n'
     html += content_html
-    html += '            </main>\n'
     
     # HÁTSÓ BORÍTÓK
     html += '''
-            <!-- HÁTSÓ BORÍTÓ BELSŐ -->
-            <section class="inner-cover" page="front">
+        <!-- HÁTSÓ BORÍTÓ BELSŐ -->
+        <div class="page cover-page">
 '''
     if os.path.exists('images/998_hatso_borito_belso.jpg'):
-        html += '                <img src="images/998_hatso_borito_belso.jpg" alt="Hátsó borító belső">\n'
+        html += '            <img src="images/998_hatso_borito_belso.jpg" alt="Hátsó borító belső">\n'
     else:
-        html += '                <div class="image-placeholder">[Hátsó borító belső oldala]</div>\n'
-    html += '            </section>\n'
+        html += '''            <div class="page-content">
+                <div class="image-placeholder">[Hátsó borító belső oldala]</div>
+            </div>\n'''
+    html += '        </div>\n'
     
     html += '''
-            <!-- HÁTSÓ BORÍTÓ -->
-            <section class="cover-page" page="cover">
+        <!-- HÁTSÓ BORÍTÓ -->
+        <div class="page cover-page">
 '''
     if os.path.exists('images/999_hatso_borito.jpg'):
-        html += '                <img src="images/999_hatso_borito.jpg" alt="Hátsó borító">\n'
+        html += '            <img src="images/999_hatso_borito.jpg" alt="Hátsó borító">\n'
     else:
-        html += '                <div class="image-placeholder">[Hátsó borító]</div>\n'
-    html += '            </section>\n'
+        html += '''            <div class="page-content">
+                <div class="image-placeholder">[Hátsó borító]</div>
+            </div>\n'''
+    html += '        </div>\n'
     
     # HTML vége
-    html += '''        </div>
-    </div>
+    html += '''    </div>
 </body>
 </html>'''
     
@@ -598,8 +649,9 @@ def create_book_html():
     print("="*50)
     print(f"\nFeldolgozott elemek:")
     print(f"  - Novellák száma: {len(toc_entries)}")
+    print(f"  - Oldalak száma: ~{page_num}")
     print("\nKövetkező lépések:")
-    print("1. Nyisd meg a book.html fájlt böngészőben (Paged.js betöltődik, oldalakra bontja)")
+    print("1. Nyisd meg a book.html fájlt böngészőben")
     print("2. Nézd meg hogy minden rendben van-e")
     print("3. Ctrl+P -> Print to PDF")
     print("4. Beállítások:")
