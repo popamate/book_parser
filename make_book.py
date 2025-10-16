@@ -293,6 +293,7 @@ h2 + p,.first-p{text-indent:0}
         close_section(current_section)
 
     html += content_html
+    html += toc_html
 
     # Hátsó borító belső
     html += '''
