@@ -70,7 +70,7 @@ main{
 section{hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto;break-inside:auto;padding:0}
 section.front-matter{page:front-matter;break-before:page}
 section.body-section{break-before:page}
-section.numbering-start{counter-reset:page 0}
+section.numbering-start{counter-reset:page 3}
 
 .cover-section{
   page:cover;break-after:page;display:flex;align-items:center;justify-content:center;
@@ -80,21 +80,10 @@ section.numbering-start{counter-reset:page 0}
 
 .title-page,.impressum-page{display:flex;flex-direction:column;justify-content:center;text-align:center}
 .title-page{align-items:center}
-.toc-section{display:block;text-align:left}
 .title-page h1{font-size:49pt;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1em;font-weight:400}
 .title-page .subtitle{font-size:18pt;font-style:italic}
 
 .impressum-page p{margin-bottom:.5em}
-
-.toc-section h2{font-size:18pt;margin-bottom:1.2em;text-align:center;letter-spacing:.05em}
-.toc-list{list-style:none;margin:0;padding:0}
-.toc-entry{display:flex;align-items:flex-end;gap:.5em;font-size:9pt;margin-bottom:.35em}
-.toc-title{flex:1 1 auto}
-.toc-title a{color:inherit;text-decoration:none}
-.toc-title a:hover{text-decoration:underline}
-.toc-dots{flex:1 1 50px;border-bottom:1px dotted #666}
-.toc-page{min-width:18pt;text-align:right}
-.toc-page::after{content:target-counter(attr(data-target url), page)}
 
 h2{font-size:19pt;margin-bottom:1.5em;text-align:center;font-weight:400;text-transform:uppercase;letter-spacing:.05em}
 section.body-section h2:not(:first-child){margin-top:2em}
@@ -172,19 +161,11 @@ h2 + p,.first-p{text-indent:0}
 </section>
 '''
 
-    # TOC (később töltjük)
-    toc_html = '''
-<!-- TARTALOMJEGYZÉK -->
-<section class="toc-section body-section">
-  <h2>TARTALOM</h2>
-  <ol class="toc-list">
-'''
-
     # --- Szöveg feldolgozás ---
     content = Path('text.txt').read_text('utf-8').replace('\r\n','\n').replace('\r','\n')
 
     content_html = ''
-    toc_entries = []
+    heading_counter = 0
     section_opening = ''
     section_content = []
     current_section = None
@@ -244,24 +225,22 @@ h2 + p,.first-p{text-indent:0}
         line = lines[i].strip()
 
         if line == '[ELŐSZÓ]':
-            entry_index = len(toc_entries) + 1
-            heading_id = make_heading_id('eloszo', entry_index)
+            heading_counter += 1
+            heading_id = make_heading_id('eloszo', heading_counter)
             open_section('preface', f'''<!-- ELŐSZÓ -->
 <section class="preface-section body-section numbering-start">
   <h2 id="{heading_id}">ELŐSZÓ</h2>
 ''')
-            toc_entries.append({'title': 'ELŐSZÓ', 'target': heading_id})
             i += 1
             continue
 
         # CÍM — ugyanabban a blokkban folytatjuk, amíg nincs [SZERZŐ:]
         if line.startswith('[CÍM:'):
             title = line[5:-1].strip()
-            entry_index = len(toc_entries) + 1
-            heading_id = make_heading_id(title, entry_index)
+            heading_counter += 1
+            heading_id = make_heading_id(title, heading_counter)
             if current_section == 'story':
                 section_content.append(f'  <h2 id="{heading_id}">{title}</h2>\n')
-                toc_entries.append({'title': title, 'target': heading_id})
                 first_paragraph = True
                 i += 1
                 continue
@@ -269,7 +248,6 @@ h2 + p,.first-p{text-indent:0}
 <section class="story-section body-section">
   <h2 id="{heading_id}">{title}</h2>
 ''')
-            toc_entries.append({'title': title, 'target': heading_id})
             i += 1
             continue
 
@@ -313,14 +291,6 @@ h2 + p,.first-p{text-indent:0}
     # zárás, ha maradt nyitva
     if current_section:
         close_section(current_section)
-
-    # TOC lezárás
-    for e in toc_entries:
-        target = e['target']
-        title = e['title']
-        toc_html += f'''    <li class="toc-entry"><span class="toc-title"><a href="#{target}">{title}</a></span><span class="toc-dots"></span><span class="toc-page" data-target="#{target}"></span></li>
-'''
-    toc_html += '  </ol>\n</section>\n'
 
     html += content_html
     html += toc_html
