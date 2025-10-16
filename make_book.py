@@ -51,339 +51,173 @@ def create_book_html():
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-
-/* Könyvoldal méret */
-@page{size:230mm 230mm;margin:0}
-@page :left {margin:20mm 25mm 25mm 20mm}
-@page :right{margin:20mm 20mm 25mm 25mm}
-
+html{background:#e0e0e0}
 body{
   font-family:'EB Garamond',serif;font-size:13.5pt;line-height:1.65;color:#1a1a1a;
-  background:#e0e0e0;margin:0;padding:20px;
+  background:#e0e0e0;padding:20px;
 }
+main{max-width:230mm;margin:0 auto;background:#fff}
 
-.page-container{width:230mm;margin:0 auto;background:#fff}
+@page{size:230mm 230mm;margin:20mm 20mm 28mm 20mm}
+@page:left{margin:20mm 28mm 28mm 20mm}
+@page:right{margin:20mm 20mm 28mm 28mm}
+@page{ @bottom-center{content:counter(page);font-size:10pt;font-family:'EB Garamond',serif} }
+@page cover{margin:0}
+@page cover,@page front-matter{ @bottom-center{content:none} }
 
-.page{
-  width:230mm;height:230mm;background:#fff;position:relative;
-  margin:0 auto 10mm;box-shadow:0 5px 20px rgba(0,0,0,.3);
-  page-break-after:always;
-}
+.page{position:relative;background:#fff}
+.page.front-matter{page:front-matter}
+.cover-page{page:cover}
+.cover-page img{width:100%;height:100%;object-fit:cover;display:block}
 
-.page-content{
-  position:absolute;inset:0;padding:20mm 20mm 25mm 20mm;text-align:left;
-  hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto;
-}
+.page-content{padding:0;hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto}
 
-/* bal/jobb margók */
-.page:nth-child(even) .page-content{padding-right:25mm}
-.page:nth-child(odd)  .page-content{padding-left:25mm}
-
-/* borítók */
-.cover-page{padding:0!important}
-.cover-page img{width:230mm;height:230mm;object-fit:cover;display:block}
-
-/* címoldal */
-.title-page .page-content{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-.title-page h1{font-size:49pt;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1em;font-weight:400}
-.title-page .subtitle{font-size:18pt;font-style:italic}
-
-/* impresszum */
-.impressum-page .page-content{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-
-/* címek */
 h2{font-size:19pt;margin-bottom:1.5em;text-align:center;font-weight:400;text-transform:uppercase;letter-spacing:.05em}
 .page-content h2:not(:first-child){margin-top:2em}
 
-/* bekezdések */
 p{margin-bottom:.5em;text-indent:.5cm;text-align:left;orphans:3;widows:3}
 h2 + p,.first-p{text-indent:0}
 
-/* iniciálé */
 .drop-cap::first-letter{float:left;font-size:4.5em;line-height:.8;margin-right:.05em;margin-top:.05em;font-weight:700;color:#1a1a1a}
 
-/* előszó */
 .preface-content{font-style:italic}
 .preface-content h2{font-style:normal}
 
-/* aláírás */
 .author-sig{text-align:right;font-style:italic;margin-top:2em;text-indent:0}
 
-/* Képoldal: szimmetrikus margó, középre kényszerítve */
-.image-page .page-content{display:flex;justify-content:center;align-items:center;padding:20mm!important}
-.image-page img{max-width:100%;max-height:100%;object-fit:contain;display:block;margin:auto}
+.image-page .page-content{display:flex;justify-content:center;align-items:center}
+.image-page img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 .image-placeholder{color:#999;font-style:italic;text-align:center;font-size:14pt}
 
-/* TOC */
 .toc-page h2{margin-bottom:1.2em;font-size:18pt}
-.toc-entry{display:flex;justify-content:space-between;margin-bottom:.4em;font-size:9pt}
-.toc-dots{flex:1;border-bottom:1px dotted #666;margin:0 .5em;position:relative;top:-.3em}
+.toc-entry{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:.4em;font-size:9pt;gap:.5em}
+.toc-entry .toc-title{flex:1 1 auto}
+.toc-entry .toc-page{min-width:18pt;text-align:right}
+.toc-dots{flex:1;border-bottom:1px dotted #666}
 
-/* OLDALSZÁM: középre és felülbírálhatatlanul látszódjon */
-.page-number{
-  position:absolute;bottom:10mm;left:0;right:0;text-align:center;
-  font-size:10pt;font-family:'EB Garamond',serif;z-index:999;pointer-events:none;
+.page-marker{position:absolute;width:0;height:0;overflow:hidden;}
+.page-marker[data-numbering-start]{counter-reset: page 0;}
+
+.title-page .page-content,.impressum-page .page-content{
+  display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center
 }
+.title-page h1{font-size:49pt;text-transform:uppercase;letter-spacing:.1em;margin-bottom:1em;font-weight:400}
+.title-page .subtitle{font-size:18pt;font-style:italic}
 
-/* PRINT: teljes méretkényszer, nincs külső margó/árnyék, 1 könyvoldal = 1 PDF oldal */
-@media print{
-  @page{size:230mm 230mm;margin:0}
-  html,body{width:230mm;margin:0;padding:0;background:#fff}
-  .page-container{width:230mm!important;margin:0 auto!important}
-  .page{
-    width:230mm!important;height:230mm!important;
-    margin:0!important;box-shadow:none!important;break-after:page;
-  }
-}
+.cover-page,
+.title-page,
+.impressum-page,
+.toc-page,
+.preface-page,
+.story-page,
+.image-page{break-after:page}
 
-/* képernyős segédkeret csak képernyőn */
+.preface-page,
+.story-page,
+.image-page{break-before:page}
+
 @media screen{
-  .page{border:1px solid #ddd}
-  .page::before{content:"";position:absolute;border:1px dashed #ccc;pointer-events:none}
-  .page:nth-child(even)::before{top:20mm;left:20mm;right:25mm;bottom:25mm}
-  .page:nth-child(odd)::before {top:20mm;left:25mm;right:20mm;bottom:25mm}
-}
-/* PAGEDJS FELÜLÍRÁS STÍLUSOK */
-.pagedjs_pages {
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: none !important;
+  main{padding:0 15mm}
+  .page{margin:0 auto 10mm;box-shadow:0 5px 20px rgba(0,0,0,.3)}
+  .page-content{padding:20mm 20mm 28mm 20mm}
+  .image-page .page-content{padding:20mm}
 }
 
-.pagedjs_page {
-  margin: 0 !important;
-  transform: none !important;
-  position: static !important;
-}
-
-.pagedjs_pagebox {
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: none !important;
-}
-
-.pagedjs_page_content {
-  transform: none !important;
-  position: relative !important;
+@media print{
+  body{padding:0;background:#fff}
+  main{padding:0;margin:0;box-shadow:none}
+  .page{margin:0;background:#fff}
+  .page-content{padding:0}
 }
 </style>
-<style>
-/* === JAVÍTOTT MARGÓK ÉS OLDALSZÁMOZÁS === */
-:root{
-  --outer: 20mm;
-  --inner: 25mm;
-  --top:   20mm;
-  --bottom: 30mm;  /* Nagyobb alsó margó PDF-hez */
-  --imgpad: 6mm;
-}
-
-/* Egyszerű, konzisztens margó kezelés */
-.page-content{
-  padding: var(--top) var(--outer) var(--bottom) var(--outer) !important;
-}
-
-/* Kötés felőli oldalak */
-.page:nth-child(even) .page-content{ 
-  padding-right: var(--inner) !important; 
-}
-.page:nth-child(odd) .page-content{  
-  padding-left: var(--inner) !important; 
-}
-
-/* Képoldalak */
-.image-page .page-content{
-  padding: var(--imgpad) !important;
-}
-.image-page img{
-  max-width: 100% !important;
-  max-height: 100% !important;
-  object-fit: contain !important;
-  display: block;
-  margin: 0 auto;
-}
-
-/* Oldalszám pozíció - biztonságos távolság az alsó margótól */
-.page-number{
-  position: absolute !important;
-  bottom: 8mm !important;
-  left: 0 !important;
-  right: 0 !important;
-  text-align: center !important;
-  font-size: 10pt !important;
-  font-family: 'EB Garamond', serif !important;
-  z-index: 999 !important;
-  pointer-events: none !important;
-}
-
-/* @page margók kikapcsolása */
-@page { 
-  margin: 0 !important; 
-  size: 230mm 230mm !important;
-}
-@page :left  { margin: 0 !important; }
-@page :right { margin: 0 !important; }
-
-/* Paged.js transzformok kikapcsolása */
-.pagedjs_pages,
-.pagedjs_page,
-.pagedjs_pagebox,
-.pagedjs_page_content{
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: none !important;
-}
-</style>
-<style id="fix-dropcap-20250115">
-/* JAVÍTOTT INICIÁLÉ KEZELÉS - minden novella első bekezdésénél */
-.page-content h2 + p::first-letter,
-.page-content .drop-cap::first-letter{
-  float: left !important;
-  font-size: 4.5em !important;
-  line-height: 0.8 !important;
-  margin-right: 0.05em !important;
-  margin-top: 0.05em !important;
-  font-weight: 700 !important;
-  color: #1a1a1a !important;
-}
-
-/* A cím utáni első bekezdés NEM húzódjon be */
-.page-content h2 + p{ 
-  text-indent: 0 !important; 
-}
-
-/* Biztosítjuk, hogy az iniciálé mindig működjön */
-.page-content .first-p::first-letter{
-  float: left !important;
-  font-size: 4.5em !important;
-  line-height: 0.8 !important;
-  margin-right: 0.05em !important;
-  margin-top: 0.05em !important;
-  font-weight: 700 !important;
-  color: #1a1a1a !important;
-}
-</style>
-
 <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
-
 <script>
-class PositionFixHandler extends Paged.Handler {
-  constructor(chunker, polisher, caller) {
-    super(chunker, polisher, caller);
-    console.log('PositionFixHandler betöltve - javítja az elcsúszást');
-  }
-
-  beforeParsed(content) {
-    console.log('beforeParsed - tartalom tisztítása');
-    const allElements = content.querySelectorAll('*');
-    allElements.forEach(el => {
-  el.style.transform = 'none';
-  // Ne írjuk felül a pozíciót! Hagyjuk a saját CSS-t érvényesülni.
-});
-  }
-
-  afterPageLayout(pageElement, page, breakToken) {
-    console.log('afterPageLayout - oldal pozíció javítása', page);
-    pageElement.style.transform = 'none';
-    pageElement.style.margin = '0';
-    pageElement.style.padding = '0';
-    
-    const pageBox = pageElement.querySelector('.pagedjs_pagebox');
-    if (pageBox) {
-      pageBox.style.transform = 'none';
-      pageBox.style.margin = '0';
-      pageBox.style.padding = '0';
-    }
-    
-    const pageContent = pageElement.querySelector('.pagedjs_page_content');
-    if (pageContent) {
-      pageContent.style.transform = 'none';
-      pageContent.style.position = 'relative';
-    }
-  }
-
+class BookPaginationHandler extends Paged.Handler {
   afterRendered(pages) {
-    console.log('afterRendered - végső pozíció ellenőrzés', pages.length, 'oldal');
-    
-    const pagesContainer = document.querySelector('.pagedjs_pages');
-    if (pagesContainer) {
-      pagesContainer.style.margin = '0';
-      pagesContainer.style.padding = '0';
-      pagesContainer.style.transform = 'none';
-    }
-    
-    pages.forEach((page, index) => {
-      page.style.margin = '0';
-      page.style.transform = 'none';
+    const anchorPages = new Map();
+    let numberingStarted = false;
+    let logicalCounter = 0;
+
+    pages.forEach(page => {
+      const pageElement = page && (page.element || page);
+      if (!pageElement || !pageElement.querySelector) {
+        return;
+      }
+
+      const hasStartMarker = pageElement.querySelector('[data-numbering-start]') !== null;
+      const excludeNumbering = pageElement.querySelector('[data-exclude-numbering]') !== null;
+
+      if (hasStartMarker) {
+        numberingStarted = true;
+        logicalCounter = 1;
+      } else if (numberingStarted && !excludeNumbering) {
+        logicalCounter += 1;
+      }
+
+      const logicalNumber = numberingStarted && !excludeNumbering ? logicalCounter : null;
+
+      if (logicalNumber !== null) {
+        pageElement.setAttribute('data-logical-page', String(logicalNumber));
+      } else {
+        pageElement.removeAttribute('data-logical-page');
+      }
+
+      pageElement.querySelectorAll('[data-toc-anchor]').forEach(anchor => {
+        if (anchor.id) {
+          anchorPages.set(anchor.id, logicalNumber);
+        }
+      });
     });
 
-    const customCSS = `
-      .pagedjs_pages { margin: 0 !important; padding: 0 !important; transform: none !important; }
-      .pagedjs_page { margin: 0 !important; transform: none !important; position: static !important; }
-      .pagedjs_pagebox { margin: 0 !important; padding: 0 !important; transform: none !important; }
-      .pagedjs_page_content { transform: none !important; position: relative !important; }
-    `;
-    
-    const style = document.createElement('style');
-    style.type = 'text/css';
-    style.innerHTML = customCSS;
-    document.head.appendChild(style);
-    
-    console.log('✅ Pozíció javítás befejezve - elcsúszás megszüntetve');
+    document.querySelectorAll('.toc-entry[data-target]').forEach(entry => {
+      const targetId = entry.dataset.target;
+      if (!targetId) {
+        return;
+      }
+      const pageSpan = entry.querySelector('.toc-page');
+      if (!pageSpan) {
+        return;
+      }
+      const logical = anchorPages.get(targetId);
+      pageSpan.textContent = logical != null ? logical : '';
+    });
   }
 }
 
-Paged.registerHandlers(PositionFixHandler);
-
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🔧 PagedJS pozíció javító handler aktív');
-});
+Paged.registerHandlers(BookPaginationHandler);
 </script>
-
-<style id="alsomargo-fix-from-v1">
-  /* Alsó margó + lábléc védősáv különválasztva */
-  :root{
-    --bottom: 22mm;      /* tényleges alsó szöveg-margó */
-    --footer-safe: 8mm;  /* védősáv a lapszámnak */
-  }
-  .page-content{
-    /* szöveg alá: margó + védősáv */
-    padding-bottom: calc(var(--bottom) + var(--footer-safe)) !important;
-  }
-  .page-content::after{
-    content:""; display:block; height: var(--footer-safe);
-  }
-  .page-number{ bottom: 8mm !important; }
-</style>
-
 </head>
 <body>
-<div class="page-container">
+<main class="page-container">
 '''
 
     # Borító (külső)
     html += '''
 <!-- ELSŐ BORÍTÓ -->
-<div class="page cover-page">
+<div class="page cover-page front-matter" data-page-role="cover">
+  <span class="page-marker" data-exclude-numbering></span>
 '''
-    html += ('            <img src="images/000_elso_borito.jpg" alt="Borító">\n'
+    html += ('  <img src="images/000_elso_borito.jpg" alt="Borító">\n'
              if Path('images/000_elso_borito.jpg').exists()
-             else '            <div class="page-content"><div class="image-placeholder">[Első borító]</div></div>\n')
-    html += '        </div>\n'
+             else '  <div class="page-content"><div class="image-placeholder">[Első borító]</div></div>\n')
+    html += '</div>\n'
 
     # Borító belső
     html += '''
 <!-- ELSŐ BORÍTÓ BELSŐ -->
-<div class="page cover-page">
+<div class="page cover-page front-matter" data-page-role="inner-cover">
+  <span class="page-marker" data-exclude-numbering></span>
 '''
-    html += ('            <img src="images/001_elso_borito_belso.jpg" alt="Belső borító">\n'
+    html += ('  <img src="images/001_elso_borito_belso.jpg" alt="Belső borító">\n'
              if Path('images/001_elso_borito_belso.jpg').exists()
-             else '            <div class="page-content"><div class="image-placeholder">[Első borító belső oldala]</div></div>\n')
-    html += '        </div>\n'
+             else '  <div class="page-content"><div class="image-placeholder">[Első borító belső oldala]</div></div>\n')
+    html += '</div>\n'
 
     # Címoldal
     html += '''
 <!-- CÍMOLDAL -->
-<div class="page title-page">
+<div class="page title-page front-matter" data-page-role="title">
+  <span class="page-marker" data-exclude-numbering></span>
   <div class="page-content">
     <h1>ÉRTÉKŐRZŐK</h1>
     <p class="subtitle">Vásárosbéci történetek</p>
@@ -394,7 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
     # Impresszum
     html += '''
 <!-- IMPRESSZUM -->
-<div class="page impressum-page">
+<div class="page impressum-page front-matter" data-page-role="impressum">
+  <span class="page-marker" data-exclude-numbering></span>
   <div class="page-content">
     <p>Írta: Mindenkori vásárosbéci lakosok</p>
     <p>A könyvet tervezte, szerkesztette: Bánki Eszter, 2025</p>
@@ -410,7 +245,8 @@ document.addEventListener('DOMContentLoaded', function() {
     # TOC (később töltjük)
     toc_html = '''
 <!-- TARTALOMJEGYZÉK -->
-<div class="page toc-page">
+<div class="page toc-page front-matter" data-page-role="toc">
+  <span class="page-marker" data-exclude-numbering></span>
   <div class="page-content">
     <h2>TARTALOM</h2>
 '''
@@ -419,86 +255,97 @@ document.addEventListener('DOMContentLoaded', function() {
     content = Path('text.txt').read_text('utf-8').replace('\r\n','\n').replace('\r','\n')
 
     content_html = ''
-    toc_entries  = []
-    page_num = 1  # az ELŐSZÓ oldala lesz 1 (TOC után)
-
-    current_section = None  # 'preface' | 'story'
-    first_paragraph = False
+    toc_entries = []
+    section_opening = ''
     section_content = []
+    current_section = None
+    first_paragraph = False
 
     lines = content.split('\n')
     i = 0
 
-    def close_section(section_type):
-        nonlocal content_html, page_num, section_content
-        if section_content:
-            for para in section_content:
-                content_html += para
+    def make_heading_id(title: str, entry_index: int) -> str:
+        base_slug = _slugify_image_name(title)
+        heading_slug = re.sub(r'[^a-z0-9_]+', '', base_slug) or f'resz-{entry_index:03d}'
+        return f'section-{entry_index:03d}-{heading_slug}'
+
+    def open_section(section_type: str, opening_html: str):
+        nonlocal current_section, section_opening, section_content, first_paragraph
+        if current_section:
+            close_section(current_section)
+        current_section = section_type
+        section_opening = opening_html
+        section_content = []
+        first_paragraph = True
+
+    def close_section(section_type: str):
+        nonlocal content_html, section_opening, section_content, current_section
+        if not section_opening:
+            current_section = None
             section_content = []
-        content_html += f'            </div>\n            <span class="page-number">{page_num}</span>\n        </div>\n'
-        page_num += 1
+            return section_type
+        content_html += section_opening
+        for para in section_content:
+            content_html += para
+        content_html += '  </div>\n</div>\n'
+        section_opening = ''
+        section_content = []
+        current_section = None
         return section_type
 
-    def add_author_page(author):
-        nonlocal content_html, page_num
+    def add_author_page(author: str):
+        nonlocal content_html
         img = _find_author_image(author)
         if img:
             content_html += f'''
 <!-- KÉP: {author} -->
-<div class="page image-page">
+<div class="page image-page" data-page-role="image">
   <div class="page-content">
     <img src="images/{img}" alt="{author}">
   </div>
-  <span class="page-number">{page_num}</span>
 </div>
 '''
         else:
             content_html += f'''
 <!-- KÉP PLACEHOLDER: {author} -->
-<div class="page image-page">
+<div class="page image-page" data-page-role="image">
   <div class="page-content"><div class="image-placeholder">[{author} képe]</div></div>
-  <span class="page-number">{page_num}</span>
 </div>
 '''
-        page_num += 1
 
     while i < len(lines):
         line = lines[i].strip()
 
         if line == '[ELŐSZÓ]':
-            current_section = 'preface'
-            content_html += '''
-<!-- ELŐSZÓ -->
-<div class="page">
+            entry_index = len(toc_entries) + 1
+            heading_id = make_heading_id('eloszo', entry_index)
+            open_section('preface', f'''<!-- ELŐSZÓ -->
+<div class="page preface-page" data-page-role="preface">
   <div class="page-content preface-content">
-    <h2>ELŐSZÓ</h2>
-'''
-            first_paragraph = True
-            section_content = []
+    <span class="page-marker" data-numbering-start></span>
+    <h2 id="{heading_id}" data-toc-anchor>ELŐSZÓ</h2>
+''')
+            toc_entries.append({'title': 'ELŐSZÓ', 'target': heading_id})
             i += 1
             continue
 
         # CÍM — ugyanabban a blokkban folytatjuk, amíg nincs [SZERZŐ:]
         if line.startswith('[CÍM:'):
             title = line[5:-1].strip()
+            entry_index = len(toc_entries) + 1
+            heading_id = make_heading_id(title, entry_index)
             if current_section == 'story':
-                section_content.append(f'                <h2>{title}</h2>\n')
-                toc_entries.append({'title': title, 'page': page_num})
+                section_content.append(f'    <h2 id="{heading_id}" data-toc-anchor>{title}</h2>\n')
+                toc_entries.append({'title': title, 'target': heading_id})
                 first_paragraph = True
                 i += 1
                 continue
-            if current_section:
-                close_section(current_section)
-            current_section = 'story'
-            content_html += f'''
-<!-- NOVELLA BLOKK -->
-<div class="page">
+            open_section('story', f'''<!-- NOVELLA BLOKK -->
+<div class="page story-page" data-page-role="story">
   <div class="page-content">
-    <h2>{title}</h2>
-'''
-            first_paragraph = True
-            section_content = []
-            toc_entries.append({'title': title, 'page': page_num})
+    <h2 id="{heading_id}" data-toc-anchor>{title}</h2>
+''')
+            toc_entries.append({'title': title, 'target': heading_id})
             i += 1
             continue
 
@@ -506,19 +353,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if line.startswith('[SZERZŐ:') and not line.startswith('[SZERZŐ_TEMP:'):
             author = line[8:-1].strip()
             if current_section:
-                section_content.append(f'                <p class="author-sig">Írta: {author}</p>\n')
+                section_content.append(f'    <p class="author-sig">Írta: {author}</p>\n')
                 closed = close_section(current_section)
                 if closed == 'story':
                     add_author_page(author)
-                current_section = None
+            current_section = None
             i += 1
             continue
 
         if line.startswith('[SZERZŐ_TEMP:'):
-            i += 1; continue
+            i += 1
+            continue
 
         if not line:
-            i += 1; continue
+            i += 1
+            continue
 
         if current_section:
             # bekezdés összefűzés
@@ -529,10 +378,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 paras.append(nx); j += 1
             txt = ' '.join(paras)
             if first_paragraph:
-                section_content.append(f'                <p class="first-p drop-cap">{txt}</p>\n')
+                section_content.append(f'    <p class="first-p drop-cap">{txt}</p>\n')
                 first_paragraph = False
             else:
-                section_content.append(f'                <p>{txt}</p>\n')
+                section_content.append(f'    <p>{txt}</p>\n')
             i = j
         else:
             i += 1
@@ -541,15 +390,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if current_section:
         close_section(current_section)
 
-    # TOC lezárás - számítsuk ki a TOC oldal számát
-    toc_page_num = 4  # Borító, belső borító, címoldal, impresszum után
+    # TOC lezárás
     for e in toc_entries:
-        toc_html += f'''      <div class="toc-entry"><span>{e['title']}</span><span class="toc-dots"></span><span>{e['page']}</span></div>
+        toc_html += f'''      <div class="toc-entry" data-target="{e['target']}"><span class="toc-title">{e['title']}</span><span class="toc-dots"></span><span class="toc-page">–</span></div>
 '''
-    toc_html += f'''  </div>
-  <span class="page-number">{toc_page_num}</span>
-</div>
-'''
+    toc_html += '  </div>\n</div>\n'
 
     html += toc_html
     html += content_html
@@ -557,7 +402,8 @@ document.addEventListener('DOMContentLoaded', function() {
     # Hátsó borító belső
     html += '''
 <!-- HÁTSÓ BORÍTÓ BELSŐ -->
-<div class="page cover-page">
+<div class="page cover-page front-matter" data-page-role="back-inner">
+  <span class="page-marker" data-exclude-numbering></span>
 '''
     html += ('  <img src="images/998_hatso_borito_belso.jpg" alt="Hátsó borító belső">\n'
              if Path('images/998_hatso_borito_belso.jpg').exists()
@@ -567,14 +413,15 @@ document.addEventListener('DOMContentLoaded', function() {
     # Hátsó borító
     html += '''
 <!-- HÁTSÓ BORÍTÓ -->
-<div class="page cover-page">
+<div class="page cover-page front-matter" data-page-role="back-cover">
+  <span class="page-marker" data-exclude-numbering></span>
 '''
     html += ('  <img src="images/999_hatso_borito.jpg" alt="Hátsó borító">\n'
              if Path('images/999_hatso_borito.jpg').exists()
              else '  <div class="page-content"><div class="image-placeholder">[Hátsó borító]</div></div>\n')
     html += '</div>\n'
 
-    html += '</div>\n</body>\n</html>'
+    html += '</main>\n</body>\n</html>'
 
     Path('book.html').write_text(html, encoding='utf-8')
     print("KESZ: book.html - nyomtatásnál állítsd: Margók=Nincs, Méretezés=100%, Háttérgrafika=on.")
