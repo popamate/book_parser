@@ -57,9 +57,8 @@ body{
   margin:0;
 }
 main{
-  max-width:230mm;margin:0 auto;background:#fff;
+  width:100%;margin:0;background:#fff;
 }
-main{max-width:230mm;margin:0 auto;background:#fff}
 
 @page{size:230mm 230mm;margin:20mm 20mm 28mm 20mm}
 @page:left{margin:20mm 28mm 28mm 20mm}
@@ -68,8 +67,7 @@ main{max-width:230mm;margin:0 auto;background:#fff}
 @page cover{margin:0; @bottom-center{content:none}}
 @page front-matter{ @bottom-center{content:none} }
 
-section{hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto;break-inside:auto}
-section:not(.cover-section):not(.image-section){padding:0 20mm 28mm 20mm}
+section{hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto;break-inside:auto;padding:0}
 section.front-matter{page:front-matter;break-before:page}
 section.body-section{break-before:page}
 section.numbering-start{counter-reset:page 0}
@@ -177,7 +175,7 @@ h2 + p,.first-p{text-indent:0}
     # TOC (később töltjük)
     toc_html = '''
 <!-- TARTALOMJEGYZÉK -->
-<section class="toc-section front-matter">
+<section class="toc-section body-section">
   <h2>TARTALOM</h2>
   <ol class="toc-list">
 '''
@@ -324,8 +322,8 @@ h2 + p,.first-p{text-indent:0}
 '''
     toc_html += '  </ol>\n</section>\n'
 
-    html += toc_html
     html += content_html
+    html += toc_html
 
     # Hátsó borító belső
     html += '''
