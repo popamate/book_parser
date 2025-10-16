@@ -222,6 +222,7 @@ Paged.registerHandlers(BookPaginationHandler);
     <h1>ÉRTÉKŐRZŐK</h1>
     <p class="subtitle">Vásárosbéci történetek</p>
   </div>
+  <span class="page-number"></span>
 </div>
 '''
 
@@ -239,6 +240,7 @@ Paged.registerHandlers(BookPaginationHandler);
     <p style="margin-top:2em;">Nyomás, kötés: Kontraszt Nyomda, Pécs</p>
     <p>ISBN 978-615-02-5049-6</p>
   </div>
+  <span class="page-number"></span>
 </div>
 '''
 
