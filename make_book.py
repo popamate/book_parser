@@ -165,6 +165,7 @@ h2 + p,.first-p{text-indent:0}
     content = Path('text.txt').read_text('utf-8').replace('\r\n','\n').replace('\r','\n')
 
     content_html = ''
+    toc_html = ''  # kompatibilitás: néhány környezet még hozzáfűzné, így legyen üres
     heading_counter = 0
     section_opening = ''
     section_content = []
