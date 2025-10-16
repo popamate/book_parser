@@ -59,6 +59,7 @@ body{
 main{
   max-width:230mm;margin:0 auto;background:#fff;
 }
+main{max-width:230mm;margin:0 auto;background:#fff}
 
 @page{size:230mm 230mm;margin:20mm 20mm 28mm 20mm}
 @page:left{margin:20mm 28mm 28mm 20mm}
