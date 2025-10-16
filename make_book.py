@@ -67,11 +67,11 @@ body{
 .page{
   width:230mm;height:230mm;background:#fff;position:relative;
   margin:0 auto 10mm;box-shadow:0 5px 20px rgba(0,0,0,.3);
-  page-break-after:always;
+  page-break-after:always;display:flex;flex-direction:column;
 }
 
 .page-content{
-  position:absolute;inset:0;padding:20mm 20mm 25mm 20mm;text-align:left;
+  position:relative;flex:1;padding:20mm 20mm 25mm 20mm;text-align:left;
   hyphens:auto;-webkit-hyphens:auto;-moz-hyphens:auto;
 }
 
@@ -117,13 +117,17 @@ h2 + p,.first-p{text-indent:0}
 /* TOC */
 .toc-page h2{margin-bottom:1.2em;font-size:18pt}
 .toc-entry{display:flex;justify-content:space-between;margin-bottom:.4em;font-size:9pt}
+.toc-entry .toc-title{flex:0 1 auto}
+.toc-entry .toc-page{min-width:18pt;text-align:right}
 .toc-dots{flex:1;border-bottom:1px dotted #666;margin:0 .5em;position:relative;top:-.3em}
 
-/* OLDALSZÁM: középre és felülbírálhatatlanul látszódjon */
+/* OLDALSZÁM: rugalmas lábléc */
 .page-number{
-  position:absolute;bottom:10mm;left:0;right:0;text-align:center;
-  font-size:10pt;font-family:'EB Garamond',serif;z-index:999;pointer-events:none;
+  display:block;margin-top:auto;padding:0 0 8mm;text-align:center;
+  font-size:10pt;font-family:'EB Garamond',serif;pointer-events:none;
 }
+
+.cover-page .page-number{display:none}
 
 /* PRINT: teljes méretkényszer, nincs külső margó/árnyék, 1 könyvoldal = 1 PDF oldal */
 @media print{
@@ -202,16 +206,14 @@ h2 + p,.first-p{text-indent:0}
   margin: 0 auto;
 }
 
-/* Oldalszám pozíció - biztonságos távolság az alsó margótól */
+/* Oldalszám - belső margón belül, rugalmasan */
 .page-number{
-  position: absolute !important;
-  bottom: 8mm !important;
-  left: 0 !important;
-  right: 0 !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 0 0 8mm !important;
   text-align: center !important;
   font-size: 10pt !important;
   font-family: 'EB Garamond', serif !important;
-  z-index: 999 !important;
   pointer-events: none !important;
 }
 
@@ -303,7 +305,7 @@ class PositionFixHandler extends Paged.Handler {
 
   afterRendered(pages) {
     console.log('afterRendered - végső pozíció ellenőrzés', pages.length, 'oldal');
-    
+
     const pagesContainer = document.querySelector('.pagedjs_pages');
     if (pagesContainer) {
       pagesContainer.style.margin = '0';
@@ -327,8 +329,56 @@ class PositionFixHandler extends Paged.Handler {
     style.type = 'text/css';
     style.innerHTML = customCSS;
     document.head.appendChild(style);
-    
+
     console.log('✅ Pozíció javítás befejezve - elcsúszás megszüntetve');
+
+    const renderedPages = pages
+      .map(page => page && (page.element || page))
+      .filter(pageEl => pageEl && pageEl.classList);
+
+    renderedPages.forEach((pageEl, index) => {
+      const pageNumber = index + 1;
+      pageEl.dataset.renderedNumber = pageNumber;
+      const originalPage = pageEl.querySelector('.page');
+      if (!originalPage) {
+        return;
+      }
+      let holder = originalPage.querySelector('.page-number');
+      if (!holder) {
+        holder = document.createElement('span');
+        holder.className = 'page-number';
+        originalPage.appendChild(holder);
+      }
+      if (originalPage.classList.contains('cover-page')) {
+        holder.textContent = '';
+        return;
+      }
+      holder.textContent = pageNumber;
+      originalPage.dataset.renderedNumber = pageNumber;
+    });
+
+    document.querySelectorAll('.toc-entry[data-target]').forEach(entry => {
+      const targetId = entry.dataset.target;
+      if (!targetId) {
+        return;
+      }
+      const target = document.getElementById(targetId);
+      if (!target) {
+        return;
+      }
+      const hostPage = target.closest('.page');
+      if (!hostPage) {
+        return;
+      }
+      const pageNumber = hostPage.dataset.renderedNumber;
+      if (!pageNumber) {
+        return;
+      }
+      const pageSpan = entry.querySelector('.toc-page');
+      if (pageSpan) {
+        pageSpan.textContent = pageNumber;
+      }
+    });
   }
 }
 
@@ -352,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
   .page-content::after{
     content:""; display:block; height: var(--footer-safe);
   }
-  .page-number{ bottom: 8mm !important; }
+  .page-number{ padding-bottom: var(--footer-safe) !important; }
 </style>
 
 </head>
@@ -388,6 +438,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <h1>ÉRTÉKŐRZŐK</h1>
     <p class="subtitle">Vásárosbéci történetek</p>
   </div>
+  <span class="page-number"></span>
 </div>
 '''
 
@@ -404,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <p style="margin-top:2em;">Nyomás, kötés: Kontraszt Nyomda, Pécs</p>
     <p>ISBN 978-615-02-5049-6</p>
   </div>
+  <span class="page-number"></span>
 </div>
 '''
 
@@ -420,8 +472,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     content_html = ''
     toc_entries  = []
-    page_num = 1  # az ELŐSZÓ oldala lesz 1 (TOC után)
-
     current_section = None  # 'preface' | 'story'
     first_paragraph = False
     section_content = []
@@ -430,17 +480,16 @@ document.addEventListener('DOMContentLoaded', function() {
     i = 0
 
     def close_section(section_type):
-        nonlocal content_html, page_num, section_content
+        nonlocal content_html, section_content
         if section_content:
             for para in section_content:
                 content_html += para
             section_content = []
-        content_html += f'            </div>\n            <span class="page-number">{page_num}</span>\n        </div>\n'
-        page_num += 1
+        content_html += '            </div>\n            <span class="page-number"></span>\n        </div>\n'
         return section_type
 
     def add_author_page(author):
-        nonlocal content_html, page_num
+        nonlocal content_html
         img = _find_author_image(author)
         if img:
             content_html += f'''
@@ -449,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="page-content">
     <img src="images/{img}" alt="{author}">
   </div>
-  <span class="page-number">{page_num}</span>
+  <span class="page-number"></span>
 </div>
 '''
         else:
@@ -457,10 +506,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- KÉP PLACEHOLDER: {author} -->
 <div class="page image-page">
   <div class="page-content"><div class="image-placeholder">[{author} képe]</div></div>
-  <span class="page-number">{page_num}</span>
+  <span class="page-number"></span>
 </div>
 '''
-        page_num += 1
 
     while i < len(lines):
         line = lines[i].strip()
@@ -481,9 +529,13 @@ document.addEventListener('DOMContentLoaded', function() {
         # CÍM — ugyanabban a blokkban folytatjuk, amíg nincs [SZERZŐ:]
         if line.startswith('[CÍM:'):
             title = line[5:-1].strip()
+            entry_index = len(toc_entries) + 1
+            base_slug = _slugify_image_name(title)
+            heading_slug = re.sub(r'[^a-z0-9_]+', '', base_slug) or f'resz-{entry_index:03d}'
+            heading_id = f'section-{entry_index:03d}-{heading_slug}'
             if current_section == 'story':
-                section_content.append(f'                <h2>{title}</h2>\n')
-                toc_entries.append({'title': title, 'page': page_num})
+                section_content.append(f'                <h2 id="{heading_id}">{title}</h2>\n')
+                toc_entries.append({'title': title, 'target': heading_id})
                 first_paragraph = True
                 i += 1
                 continue
@@ -492,13 +544,13 @@ document.addEventListener('DOMContentLoaded', function() {
             current_section = 'story'
             content_html += f'''
 <!-- NOVELLA BLOKK -->
-<div class="page">
+<div class="page" id="{heading_id}">
   <div class="page-content">
-    <h2>{title}</h2>
+    <h2 id="{heading_id}-title">{title}</h2>
 '''
             first_paragraph = True
             section_content = []
-            toc_entries.append({'title': title, 'page': page_num})
+            toc_entries.append({'title': title, 'target': f'{heading_id}-title'})
             i += 1
             continue
 
@@ -542,12 +594,11 @@ document.addEventListener('DOMContentLoaded', function() {
         close_section(current_section)
 
     # TOC lezárás - számítsuk ki a TOC oldal számát
-    toc_page_num = 4  # Borító, belső borító, címoldal, impresszum után
     for e in toc_entries:
-        toc_html += f'''      <div class="toc-entry"><span>{e['title']}</span><span class="toc-dots"></span><span>{e['page']}</span></div>
+        toc_html += f'''      <div class="toc-entry" data-target="{e['target']}"><span class="toc-title">{e['title']}</span><span class="toc-dots"></span><span class="toc-page">–</span></div>
 '''
     toc_html += f'''  </div>
-  <span class="page-number">{toc_page_num}</span>
+  <span class="page-number"></span>
 </div>
 '''
 
